@@ -1,0 +1,959 @@
+// src/App.jsx
+
+import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
+import Home from "./pages/HomePage";
+import Navbar from "./components/Navbar";
+import ProjectsPage from "./pages/ProjectsPage";
+import DevelopersPage from "./pages/DevelopersPage";
+import TasksPage from "./pages/TasksPAge";
+import data from './assets/data.json';
+import { useState, useEffect } from "react";
+
+const App = () => {
+  const [projects, setProjects] = useState(data.listOfProjects);
+
+  useEffect(() => {
+    const storedData = localStorage.getItem("data");
+    if (storedData) {
+      setProjects(JSON.parse(storedData).listOfProjects);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("data", JSON.stringify({ listOfProjects: projects }));
+  }, [projects]);
+
+  return (
+    <Router>
+      <Navbar />
+      <div className="container pt-10 mx-auto p-4 bg-teal-700 min-h-screen">
+        <Routes>
+          <Route path="/" element={<Navigate to="/home" />} />
+          <Route path="/home" element={<Home projects={projects} />} />
+          <Route path="/projects" element={<ProjectsPage projects={projects} setProjects={setProjects} />} />
+          <Route path="/developers" element={<DevelopersPage projects={projects} setProjects={setProjects} />} />
+          <Route path="/tasks" element={<TasksPage projects={projects} setProjects={setProjects} />} />
+        </Routes>
+      </div>
+    </Router>
+  );
+};
+
+export default App;
+_______________________________________________________________________________________________________________________________________________________________________
+
+// src/components/Navbar.jsx
+
+import { Link } from "react-router-dom";
+
+const Navbar = () => {
+  return (
+    <nav className="bg-teal-950 text-white p-4 shadow-md fixed top-0 left-0 right-0 z-50">
+      <div className="container mx-auto flex justify-between items-center">
+        <ul className="flex space-x-6">
+          <li>
+            <Link to="/home" className="hover:text-orange-500 font-bold">
+              Home
+            </Link>
+          </li>
+          <li>
+            <Link to="/projects" className="hover:text-orange-500 font-bold">
+              Projects
+            </Link>
+          </li>
+          <li>
+            <Link to="/developers" className="hover:text-orange-500 font-bold">
+              Developers
+            </Link>
+          </li>
+          <li>
+            <Link to="/tasks" className="hover:text-orange-500 font-bold">
+              Tasks
+            </Link>
+          </li>
+        </ul>
+      </div>
+    </nav>
+  );
+};
+
+export default Navbar;
+
+_______________________________________________________________________________________________________________________________________________________________________
+
+// src/components/DevelopersDisplay.jsx
+
+/* eslint-disable react/prop-types */
+const DevelopersDisplay = ({ developers }) => {
+  return (
+    <div className="p-4">
+      <h2 className="text-white text-lg font-bold mb-4">Developers</h2>
+      {developers.map((developer) => (
+        <div
+          key={developer.devID}
+          className="mb-4 p-4 bg-gray-700 rounded-lg shadow-md"
+        >
+          <div>
+            <h3 className="text-white font-bold">{developer.devName}</h3>
+            <p className="text-gray-300">Project: {developer.projectName}</p>
+            {developer.listOfTasks && developer.listOfTasks.length > 0 ? (
+              <ul className="mt-2">
+                {developer.listOfTasks.map((task) => (
+                  <li
+                    key={task.taskId}
+                    className="text-gray-200 flex items-center"
+                  >
+                    {task.taskName} -{" "}
+                    <span className="text-yellow-400 ml-2">{task.status}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-400">No tasks assigned.</p>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export default DevelopersDisplay;
+
+
+_______________________________________________________________________________________________________________________________________________________________________
+
+
+// src/components/ProjectForm.jsx
+
+/* eslint-disable react/prop-types */
+import { useState } from "react";
+
+const ProjectForm = ({ onCreate, onCancel, developers }) => {
+  const [projectName, setProjectName] = useState("");
+  const [projectDescription, setProjectDescription] = useState("");
+  const [assignedDeveloper, setAssignedDeveloper] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    const newProject = {
+      id: Date.now().toString(),
+      name: projectName,
+      description: projectDescription,
+      listOfDevelopers: assignedDeveloper
+        ? [
+            {
+              devID: assignedDeveloper,
+              devName:
+                developers.find((dev) => dev.devID === assignedDeveloper)
+                  ?.devName || "Unknown",
+              listOfTasks: [],
+            },
+          ]
+        : [],
+    };
+    onCreate(newProject);
+    setProjectName("");
+    setProjectDescription("");
+    setAssignedDeveloper("");
+  };
+
+  return (
+    <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex justify-center items-center z-50">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+        <h2 className="text-2xl font-bold mb-4">Create New Project</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="text"
+            placeholder="Project Name"
+            value={projectName}
+            onChange={(e) => setProjectName(e.target.value)}
+            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            required
+          />
+          <textarea
+            placeholder="Description"
+            value={projectDescription}
+            onChange={(e) => setProjectDescription(e.target.value)}
+            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 h-24"
+            required
+          ></textarea>
+
+          <select
+            value={assignedDeveloper}
+            onChange={(e) => setAssignedDeveloper(e.target.value)}
+            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            required
+          >
+            <option value="">Select Developer</option>
+            {developers.map((dev) => (
+              <option key={dev.devID} value={dev.devID}>
+                {dev.devName}
+              </option>
+            ))}
+          </select>
+
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg mr-2"
+            >
+              Create
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default ProjectForm;
+
+
+_______________________________________________________________________________________________________________________________________________________________________
+
+// src/pages/HomePage.jsx
+
+/* eslint-disable react/prop-types */
+import Projects from "../sections/Projects";
+import Tasks from "../sections/Tasks";
+import DevelopersDisplay from "../components/DevelopersDisplay";
+
+const Home = ({ projects }) => {
+  const developersData = projects.flatMap((projectObj) => {
+    const projectKey = Object.keys(projectObj)[0];
+    const project = projectObj[projectKey];
+    return project.listOfDevelopers.map((dev) => ({
+      ...dev,
+      projectName: project.name,
+      projectId: project.id,
+    }));
+  });
+
+  return (
+    <div className="flex flex-col md:flex-row gap-6 p-6">
+      <div className="md:w-1/2 bg-teal-900 p-6 rounded-lg shadow-md max-h-[600px] overflow-y-auto">
+        <h2 className="text-white font-bold mb-4 text-xl">Tasks</h2>
+        <Tasks projects={projects} setProjects={() => {}} />
+      </div>
+      <div className="md:w-1/2 bg-teal-900 p-6 rounded-lg shadow-md max-h-[600px] overflow-y-auto">
+        <h2 className="text-white font-bold mb-4 text-xl">Projects</h2>
+        <Projects projects={projects} setProjects={() => {}} />
+      </div>
+      <div className="md:w-1/2 bg-teal-900 p-6w rounded-lg shadow-md max-h-[600px] overflow-y-auto">
+        <DevelopersDisplay developers={developersData} />{" "}
+
+      </div>
+    </div>
+  );
+};
+
+export default Home;
+
+_______________________________________________________________________________________________________________________________________________________________________
+
+
+// src/pages/ProjectsPage.jsx
+
+/* eslint-disable react/prop-types */
+import { useState, useEffect } from "react";
+import ProjectForm from "../components/ProjectForm";
+
+const ProjectsPage = ({ projects, setProjects }) => {
+  const [localProjects, setLocalProjects] = useState(projects || []);
+  const [showProjectForm, setShowProjectForm] = useState(false);
+  const [allDevelopers, setAllDevelopers] = useState([]);
+
+  useEffect(() => {
+    setLocalProjects(projects || []);
+
+    const developersData = projects.flatMap((projectObj) => {
+      const projectKey = Object.keys(projectObj)[0];
+      const project = projectObj[projectKey];
+      return project.listOfDevelopers.map((dev) => ({
+        ...dev,
+        projectName: project.name,
+        projectId: project.id,
+      }));
+    });
+    setAllDevelopers(developersData);
+  }, [projects]);
+
+  const handleCreateProject = (newProject) => {
+    const updatedProjects = [
+      ...localProjects,
+      { [`project${Date.now()}`]: newProject },
+    ];
+    setLocalProjects(updatedProjects);
+    setProjects(updatedProjects);
+    setShowProjectForm(false);
+  };
+
+  const handleStatusChange = (projectId, devID, taskId, newStatus) => {
+    const updatedProjects = localProjects.map((projectItem) => {
+      const projectKey = Object.keys(projectItem)[0];
+      const project = projectItem[projectKey];
+
+      if (project.id === projectId) {
+        const updatedDevelopers = project.listOfDevelopers.map((developer) => {
+          if (developer.devID === devID) {
+            const updatedTasks = developer.listOfTasks.map((task) => {
+              if (task.taskId === taskId) {
+                return { ...task, status: newStatus };
+              }
+              return task;
+            });
+            return { ...developer, listOfTasks: updatedTasks };
+          }
+          return developer;
+        });
+        return {
+          [projectKey]: { ...project, listOfDevelopers: updatedDevelopers },
+        };
+      }
+      return projectItem;
+    });
+
+    setLocalProjects(updatedProjects);
+    setProjects(updatedProjects);
+  };
+
+  const filterProjectsByStatus = (status) => {
+    if (!localProjects) return [];
+
+    const filteredProjects = [];
+    localProjects.forEach((projectItem) => {
+      const projectKey = Object.keys(projectItem)[0];
+      const project = projectItem[projectKey];
+
+      if (project && project.listOfDevelopers) {
+        project.listOfDevelopers.forEach((developer) => {
+          if (developer && developer.listOfTasks) {
+            developer.listOfTasks.forEach((task) => {
+              if (task && task.status === status) {
+                filteredProjects.push({
+                  ...project,
+                  developer: developer.devName,
+                  task: task.taskName,
+                  taskId: task.taskId,
+                  devID: developer.devID,
+                  id: project.id,
+                  status: task.status,
+                });
+              }
+            });
+          }
+        });
+      }
+    });
+
+    return filteredProjects;
+  };
+
+  return (
+    <div className="pt-6 mt-4">
+      <button
+        onClick={() => setShowProjectForm(true)}
+        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4 cursor-pointer"
+      >
+        Create New Project
+      </button>
+
+      {showProjectForm && (
+        <ProjectForm
+          onCreate={handleCreateProject}
+          onCancel={() => setShowProjectForm(false)}
+          developers={allDevelopers}
+        />
+      )}
+
+      <div className="flex flex-col md:flex-row gap-4">
+        {["pending", "In-Progress", "review", "QA"].map((status) => (
+          <div
+            key={status}
+            className="md:w-1/4 bg-gray-700 p-4 rounded-lg shadow-md"
+          >
+            <h3 className="text-white font-bold mb-2 capitalize">
+              {status} Projects
+            </h3>
+            <div className="max-h-[400px] overflow-y-auto">
+              {filterProjectsByStatus(status).map((project, index) => (
+                <div
+                  key={index}
+                  className="bg-gray-800 p-4 rounded-lg shadow-md mb-2 flex items-center justify-between"
+                >
+                  <div>
+                    <p className="text-white">{project.name}</p>
+                    <p className="text-white">Developer: {project.developer}</p>
+                    <p className="text-white">Task: {project.task}</p>
+                  </div>
+                  <select
+                    value={project.status}
+                    onChange={(e) =>
+                      handleStatusChange(
+                        project.id,
+                        project.devID,
+                        project.taskId,
+                        e.target.value
+                      )
+                    }
+                    className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white cursor-pointer"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="In-Progress">In-Progress</option>
+                    <option value="review">Review</option>
+                    <option value="QA">QA</option>
+                  </select>
+                </div>
+              ))}
+              {filterProjectsByStatus(status).length === 0 && (
+                <p className="text-gray-500 ">No projects in this category.</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default ProjectsPage;
+
+_______________________________________________________________________________________________________________________________________________________________________
+
+//src/pages/DevelopersPage.jsx
+
+/* eslint-disable react/prop-types */
+import { useState, useEffect } from "react";
+
+const DevelopersPage = ({ projects, setProjects }) => {
+  const [localProjects, setLocalProjects] = useState(projects || []);
+  const [editingDeveloper, setEditingDeveloper] = useState(null);
+  const [editedTasks, setEditedTasks] = useState([]);
+  const [formErrors, setFormErrors] = useState({});
+
+  useEffect(() => {
+    setLocalProjects(projects || []);
+  }, [projects]);
+
+  const allDevelopers = localProjects.flatMap((projectObj) => {
+    const projectKey = Object.keys(projectObj)[0];
+    const project = projectObj[projectKey];
+    return project.listOfDevelopers.map((dev) => ({
+      ...dev,
+      projectName: project.name,
+      projectId: project.id,
+    }));
+  });
+
+  const handleEditDeveloper = (developer) => {
+    setEditingDeveloper(developer);
+    setEditedTasks(developer.listOfTasks.map((task) => ({ ...task })));
+    setFormErrors({});
+  };
+
+  const handleTaskChange = (taskId, newStatus, newTaskName) => {
+    setEditedTasks(
+      editedTasks.map((task) =>
+        task.taskId === taskId
+          ? { ...task, status: newStatus, taskName: newTaskName }
+          : task
+      )
+    );
+    setFormErrors({ ...formErrors, [taskId]: !newTaskName });
+  };
+
+  const handleSaveDeveloper = () => {
+    let hasErrors = false;
+    const newFormErrors = {};
+
+    editedTasks.forEach((task) => {
+      if (!task.taskName) {
+        newFormErrors[task.taskId] = true;
+        hasErrors = true;
+      }
+    });
+
+    setFormErrors(newFormErrors);
+
+    if (hasErrors) {
+      return;
+    }
+
+    const updatedProjects = localProjects.map((projectItem) => {
+      const projectKey = Object.keys(projectItem)[0];
+      const project = projectItem[projectKey];
+
+      if (project.id === editingDeveloper.projectId) {
+        const updatedDevelopers = project.listOfDevelopers.map((developer) => {
+          if (developer.devID === editingDeveloper.devID) {
+            return { ...developer, listOfTasks: editedTasks };
+          }
+          return developer;
+        });
+        return {
+          [projectKey]: { ...project, listOfDevelopers: updatedDevelopers },
+        };
+      }
+      return projectItem;
+    });
+
+    setLocalProjects(updatedProjects);
+    setProjects(updatedProjects);
+    setEditingDeveloper(null);
+    setEditedTasks([]);
+    setFormErrors({});
+  };
+
+  const handleCancelEdit = () => {
+    setEditingDeveloper(null);
+    setEditedTasks([]);
+    setFormErrors({});
+  };
+
+  return (
+    <div className="pt-10">
+      {allDevelopers.map((developer) => (
+        <div
+          key={developer.devID}
+          className="bg-gray-700 p-5 rounded-lg shadow-md mb-4"
+        >
+          <p className="text-white font-medium text-lg">{developer.devName}</p>
+          <p className="text-white text-sm">Project: {developer.projectName}</p>
+
+          {editingDeveloper?.devID === developer.devID ? (
+            <div>
+              {editedTasks.map((task) => (
+                <div key={task.taskId} className="mb-2 flex items-center">
+                  <input
+                    type="text"
+                    value={task.taskName}
+                    onChange={(e) =>
+                      handleTaskChange(task.taskId, task.status, e.target.value)
+                    }
+                    className={`bg-gray-600 border border-gray-500 rounded px-2 py-1 text-white text-sm mr-2 ${
+                      formErrors[task.taskId] ? "border-red-500" : ""
+                    }`}
+                  />
+                  {formErrors[task.taskId] && (
+                    <span className="text-red-500 text-sm">
+                      Task name is required
+                    </span>
+                  )}
+                  <select
+                    value={task.status}
+                    onChange={(e) =>
+                      handleTaskChange(
+                        task.taskId,
+                        e.target.value,
+                        task.taskName
+                      )
+                    }
+                    className="bg-gray-600 border border-gray-500 rounded px-2 py-1 text-white text-sm"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="in progress">In Progress</option>
+                    <option value="review">Review</option>
+                    <option value="qa">QA</option>
+                  </select>
+                </div>
+              ))}
+              <div className="mt-2">
+                <button
+                  onClick={handleSaveDeveloper}
+                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded mr-2 text-sm"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={handleCancelEdit}
+                  className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              {developer.listOfTasks.map((task) => (
+                <div key={task.taskId} className="mb-2 flex items-center">
+                  <p className="text-white mr-2">{task.taskName} -</p>
+                  <p className="text-white mr-2">{task.status}</p>
+                </div>
+              ))}
+              <button
+                onClick={() => handleEditDeveloper(developer)}
+                className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-3 rounded mt-2 text-sm"
+              >
+                Edit Tasks
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+      {allDevelopers.length === 0 && (
+        <p className="text-gray-500">No developers found.</p>
+      )}
+    </div>
+  );
+};
+
+export default DevelopersPage;
+
+
+_______________________________________________________________________________________________________________________________________________________________________
+
+//src/pages/TasksPage.jsx
+
+/* eslint-disable react/prop-types */
+import Tasks from "../sections/Tasks";
+
+const TasksPage = ({ projects, setProjects }) => {
+    return (
+        <div className="pt-10">
+            <Tasks projects={projects} setProjects={setProjects} />
+        </div>
+    )
+}
+
+export default TasksPage;
+_______________________________________________________________________________________________________________________________________________________________________
+
+//src/sections/Developers.jsx
+
+/* eslint-disable react/prop-types */
+import { useState, useEffect } from "react";
+
+const Developers = ({ projects, setProjects }) => {
+  const [listOfDevelopers, setListOfDevelopers] = useState([]);
+
+  useEffect(() => {
+    const developersData = projects.flatMap((projectObj) => {
+      const projectKey = Object.keys(projectObj)[0];
+      const project = projectObj[projectKey];
+      return project.listOfDevelopers.map((dev) => ({
+        ...dev,
+        projectName: project.name,
+        projectId: project.id,
+      }));
+    });
+    setListOfDevelopers(developersData);
+  }, [projects]);
+
+  const handleDeleteDeveloper = (devID, projectId) => {
+    const updatedProjects = projects.map((projectObj) => {
+      const projectKey = Object.keys(projectObj)[0];
+      const project = projectObj[projectKey];
+
+      if (project.id === projectId) {
+        const updatedDevelopers = project.listOfDevelopers.filter(
+          (dev) => dev.devID !== devID
+        );
+        return {
+          [projectKey]: { ...project, listOfDevelopers: updatedDevelopers },
+        };
+      }
+      return projectObj;
+    });
+    setProjects(updatedProjects);
+  };
+
+  if (listOfDevelopers.length === 0) {
+    return <div>Loading developers...</div>;
+  }
+
+  return (
+    <div className="p-4">
+      <h2 className="text-white text-lg font-bold mb-4">Developers</h2>
+      {listOfDevelopers.map((developer) => (
+        <div
+          key={developer.devID}
+          className="mb-4 p-4 bg-gray-700 rounded-lg shadow-md flex justify-between items-center"
+        >
+          <div>
+            <h3 className="text-white font-bold">{developer.devName}</h3>
+            <p className="text-gray-300">Project: {developer.projectName}</p>
+            {developer.listOfTasks && developer.listOfTasks.length > 0 ? (
+              <ul className="mt-2">
+                {developer.listOfTasks.map((task) => (
+                  <li key={task.taskId} className="text-gray-200">
+                    {task.taskName} -{" "}
+                    <span className="text-yellow-400">{task.status}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-400">No tasks assigned.</p>
+            )}
+          </div>
+          <button
+            onClick={() =>
+              handleDeleteDeveloper(developer.devID, developer.projectId)
+            }
+            className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Delete
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export default Developers;
+
+
+_______________________________________________________________________________________________________________________________________________________________________
+
+//src/sections/Projects.jsx
+
+/* eslint-disable react/prop-types */
+const Projects = ({ projects }) => {
+  return (
+    <div>
+      {projects.map((projectItem) => {
+        const projectName = Object.keys(projectItem)[0];
+        const project = projectItem[projectName];
+        return (
+          <div
+            key={project.id}
+            className="mb-4 p-4 bg-gray-700 rounded-lg shadow-md"
+          >
+            <h3 className="text-white font-bold">{project.name}</h3>
+            <p className="text-gray-300">
+              Description: {project.description || "No description provided."}
+            </p>{" "}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+export default Projects;
+
+_______________________________________________________________________________________________________________________________________________________________________
+
+//src/sections/Tasks.jsx
+
+/* eslint-disable react/prop-types */
+const Tasks = ({ projects, setProjects }) => {
+  const handleStatusChange = (projectId, devID, taskId, newStatus) => {
+    const updatedProjects = projects.map((projectItem) => {
+      const projectKey = Object.keys(projectItem)[0];
+      const project = projectItem[projectKey];
+
+      if (project.id === projectId) {
+        const updatedDevelopers = project.listOfDevelopers.map((developer) => {
+          if (developer.devID === devID) {
+            const updatedTasks = developer.listOfTasks.map((task) => {
+              if (task.taskId === taskId) {
+                return { ...task, status: newStatus };
+              }
+              return task;
+            });
+            return { ...developer, listOfTasks: updatedTasks };
+          }
+          return developer;
+        });
+        return {
+          [projectKey]: { ...project, listOfDevelopers: updatedDevelopers },
+        };
+      }
+      return projectItem;
+    });
+    setProjects(updatedProjects);
+  };
+
+  if (!projects) {
+    return <div>Loading tasks...</div>;
+  }
+
+  return (
+    <div>
+      {projects.map((projectItem) => {
+        const projectName = Object.keys(projectItem)[0];
+        const project = projectItem[projectName];
+        return (
+          <div
+            key={project.id}
+            className="mb-4 p-4 bg-gray-700 rounded-lg shadow-md"
+          >
+            <h3 className="text-white font-bold">{project.name} </h3>
+            {project.listOfDevelopers &&
+              project.listOfDevelopers.map((developer) => (
+                <div
+                  key={developer.devID}
+                  className="mb-2 p-2 bg-gray-800 rounded"
+                >
+                  <h4 className="text-white font-semibold">
+                    {developer.devName}'s Tasks
+                  </h4>
+                  {developer.listOfTasks &&
+                    developer.listOfTasks.map((task) => (
+                      <li
+                        key={task.taskId}
+                        className="text-white flex items-center"
+                      >
+                        {task.taskName}
+                        <select
+                          value={task.status}
+                          onChange={(e) =>
+                            handleStatusChange(
+                              project.id,
+                              developer.devID,
+                              task.taskId,
+                              e.target.value
+                            )
+                          }
+                          className="ml-2 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white m-2 "
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="In-Progress">In-Progress</option>
+                          <option value="review">Review</option>
+                          <option value="qa">QA</option>
+                        </select>
+                      </li>
+                    ))}
+                </div>
+              ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+export default Tasks;
+
+_______________________________________________________________________________________________________________________________________________________________________
+
+// src/assets/data.json
+
+{
+  "listOfProjects": [
+    {
+      "project1": {
+
+        "id": "101",
+        "name": "Task 1",
+        "description": "Lorem ipsum dolor sit amet consectetur, adipisicing elit. Blanditiis, rem?",
+        "listOfDevelopers": [
+          
+          {
+            "devID": "202",
+            "devName": "Aryan",
+            "listOfTasks": [
+              {
+                "taskId": "T3",
+                "taskName": "Modify the component",
+                "status": "In-Progress"
+              },
+              {
+                "taskId": "T4",
+                "taskName": "Added a new component to an existing component",
+                "status": "review"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "project2": {
+
+        "id": "102",
+        "name": "Task 2",
+        "description": "Lorem ipsum dolor sit amet consectetur, adipisicing elit. Blanditiis, rem?",
+        "listOfDevelopers": [
+          {
+            "devID": "2033",
+            "devName": "Rohan",
+            "listOfTasks": [
+              {
+                "taskId": "T5",
+                "taskName": "Create a new component",
+                "status": "pending"
+              },
+              {
+                "taskId": "T6",
+                "taskName": "Update the existing component",
+                "status": "QA"
+              }
+            ]
+          },
+          {
+            "devID": "204",
+            "devName": "James",
+            "listOfTasks": [
+              {
+                "taskId": "T7",
+                "taskName": "Modify the component",
+                "status": "In-Progress"
+              },
+              {
+                "taskId": "T8",
+                "taskName": "Added a new component to an existing component",
+                "status": "review"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "project3": {
+
+        "id": "103",
+        "name": "Task 3",
+        "description": "Lorem ipsum dolor sit amet consectetur, adipisicing elit. Blanditiis, rem?",
+        "listOfDevelopers": [
+          {
+            "devID": "205",
+            "devName": "Akash",
+            "listOfTasks": [
+              {
+                "taskId": "T9",
+                "taskName": "Create a new component",
+                "status": "pending"
+              },
+              {
+                "taskId": "T10",
+                "taskName": "Update the existing component",
+                "status": "QA"
+              }
+            ]
+          },
+          {
+            "devID": "206",
+            "devName": "Karan",
+            "listOfTasks": [
+              {
+                "taskId": "T11",
+                "taskName": "Modify the component",
+                "status": "In-Progress"
+              },
+              {
+                "taskId": "T12",
+                "taskName": "Added a new component to an existing component",
+                "status": "review"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+
+
+_______________________________________________________________________________________________________________________________________________________________________
+
